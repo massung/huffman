@@ -1,4 +1,4 @@
-;;;; Huffman Encoding for Common Lisp
+;;;; Huffman Coding for Common Lisp
 ;;;;
 ;;;; Copyright (c) 2014 by Jeffrey Massung
 ;;;;
