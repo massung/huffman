@@ -22,9 +22,26 @@
   (:nicknames :huff)
   (:export
    #:huffman-encode
-   #:huffman-decode))
+   #:huffman-decode
+
+   ;; huffman coding slot readers
+   #:huffman-coding-sequence
+   #:huffman-coding-map))
 
 (in-package :huffman)
+
+(defclass huffman-coding ()
+  ((coding :initarg :coding :reader huffman-coding-sequence)
+   (map    :initarg :map    :reader huffman-coding-map)
+   (type   :initarg :type   :reader huffman-coding-type))
+  (:documentation "Return value from huffman-encode."))
+
+(defmethod print-object ((obj huffman-coding) stream)
+  "Output a Huffman coding."
+  (print-unreadable-object (obj stream :type t)
+    (with-slots (coding map)
+        obj
+      (format stream "~d bits, ~d unique values" (length coding) (hash-table-count map)))))
 
 (defstruct node "Huffman tree node." count leaf value left right)
 
@@ -98,28 +115,30 @@
   (let ((map (map-of-tree (make-tree seq))))
     (flet ((encode (s x)
              (concatenate '(vector bit) s (gethash x map))))
-      (values (reduce #'encode seq :initial-value #*) map))))
+      (let ((coding (reduce #'encode seq :initial-value #*)))
+        (make-instance 'huffman-coding :type (type-of seq) :coding coding :map map)))))
 
-(defun huffman-decode (bits map &optional (type 'list))
+(defun huffman-decode (coding)
   "Decode a bit vector with a Huffman encoding map."
-  (let* ((tree (tree-of-map map))
-         (head (list nil))
+  (let ((value (loop with tree = (tree-of-map (huffman-coding-map coding))
 
-         ;; target node and value destination
-         (node tree)
-         (tail head))
+                     ;; always start a the root
+                     with node = tree
+                     
+                     ;; loop over every bit
+                     for b across (huffman-coding-sequence coding)
+                     
+                     ;; traverse the tree
+                     do (setf node (if (zerop b)
+                                       (node-left node)
+                                     (node-right node)))
+                     
+                     ;; if reached a leaf node, then collect the value and reset back to the root
+                     when (node-leaf node)
+                     collect (prog1
+                                 (node-value node)
+                               (setf node tree)))))
 
-    ;; traverse to the next node in the tree
-    (flet ((decode (bit)
-             (setf node (slot-value node (if (zerop bit) 'left 'right)))
+    ;; return the type desired
+    (coerce value (huffman-coding-type coding))))
 
-             ;; if it's a leaf node, then collect the value
-             (when (node-leaf node)
-               (setf tail (cdr (rplacd tail (list (node-value node)))))
-
-               ;; reset back to the tree root
-               (setf node tree))))
-      (map nil #'decode bits))
-
-    ;; return the collected values
-    (coerce (rest head) type)))
