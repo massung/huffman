@@ -87,7 +87,7 @@
                    (build-map (node-right node) (concatenate '(vector bit) bits #*1))))))
       (prog1
           map
-        (build-map tree #*)))))
+        (build-map tree (make-array 0 :element-type 'bit :adjustable t :fill-pointer t))))))
 
 (defun tree-of-map (map)
   "Return a binary tree of Huffman codes from a hash map."
@@ -110,13 +110,16 @@
           root
         (maphash #'insert-value map)))))
 
-(defun huffman-encode (seq)
+(defun huffman-encode (seq &optional (map (map-of-tree (make-tree seq))))
   "Generate a Huffman map of values to bit encodings and encode the sequence."
-  (let ((map (map-of-tree (make-tree seq))))
-    (flet ((encode (s x)
-             (concatenate '(vector bit) s (gethash x map))))
-      (let ((coding (reduce #'encode seq :initial-value #*)))
-        (make-instance 'huffman-coding :type (type-of seq) :coding coding :map map)))))
+  (let ((coding (make-array 0 :element-type 'bit :adjustable t :fill-pointer t)))
+    (flet ((encode (x)
+             (let ((bits (gethash x map)))
+               (if bits
+                   (loop for b across bits do (vector-push-extend b coding))
+                 (warn "~s not found in coding map; skipping..." x)))))
+      (map nil #'encode seq))
+    (make-instance 'huffman-coding :type (type-of seq) :coding coding :map map)))
 
 (defun huffman-decode (coding)
   "Decode a bit vector with a Huffman encoding map."
