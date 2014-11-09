@@ -70,8 +70,16 @@
           for left = (pop ns)
           for right = (pop ns)
 
-          ;; push a root and resort to get the next
-          do (setf ns (sort (cons (make-root left right) ns) #'< :key #'node-count))
+          ;; push a new root back onto the list, but in sorted order
+          do (loop with node = (make-root left right)
+
+                   ;; keep popping smaller node values
+                   while (and ns (> (node-count node) (node-count (first ns))))
+                   collect (pop ns)
+                   into less
+                   
+                   ;; construct the new tree nodes
+                   finally (setf ns (append less (cons node ns))))
 
           ;; return the root
           finally (return (first ns)))))
