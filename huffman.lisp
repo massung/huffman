@@ -24,6 +24,9 @@
    #:huffman-encode
    #:huffman-decode
 
+   ;; creating a huffman coding map from a sequence
+   #:huffman-map-sequence
+
    ;; huffman coding slot readers
    #:huffman-coding-sequence
    #:huffman-coding-map))
@@ -118,7 +121,11 @@
           root
         (maphash #'insert-value map)))))
 
-(defun huffman-encode (seq &optional (map (map-of-tree (make-tree seq))))
+(defun huffman-map-sequence (seq)
+  "Return a hash-table of Huffman codes from a sequence."
+  (map-of-tree (make-tree seq)))
+
+(defun huffman-encode (seq &optional (map (huffman-map-sequence seq)))
   "Generate a Huffman map of values to bit encodings and encode the sequence."
   (let ((coding (make-array 0 :element-type 'bit :adjustable t :fill-pointer t)))
     (flet ((encode (x)
